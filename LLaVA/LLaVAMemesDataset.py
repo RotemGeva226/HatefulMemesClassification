@@ -10,10 +10,9 @@ BASE_PATH = Path(r"C:\Users\rotem.geva\PycharmProjects\HatefulMemesClassificatio
 RAW_DATA_DIR = BASE_PATH / "raw_data"
 
 class LLaVAMemesDataset(Dataset):
-    def __init__(self, dataframe, image_dir, image_processor=None):
+    def __init__(self, dataframe, image_dir=RAW_DATA_DIR):
         self.df = dataframe
         self.image_dir = image_dir
-        self.processor = image_processor
 
     def __len__(self):
         return len(self.df)
