@@ -24,7 +24,7 @@ class LLaVA(nn.Module):
             nn.ReLU(),
             nn.Dropout(0.2),
             nn.Linear(128, 2)  # Binary classification: 0 or 1
-        ).to(self.device).half()
+        ).to(self.device)
 
     def forward(self, images, prompts):
         # Preprocess inputs
@@ -38,9 +38,11 @@ class LLaVA(nn.Module):
 
         # Aggregate embeddings (e.g., mean-pooling over spatial tokens)
         pooled = image_embeds.mean(dim=1)  # shape: [B, D]
+        pooled = pooled.float()
 
         # Classify
         logits = self.classifier(pooled)
+        logits = logits.float()
         return logits
 
 if __name__ == "__main__":
