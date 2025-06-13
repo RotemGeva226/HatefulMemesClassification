@@ -10,7 +10,9 @@ class Trainer:
         self.config = config
         self.device = config["device"]
         self.optimizer = torch.optim.AdamW(model.classifier.parameters(), lr=config["learning_rate"])
-        wandb.init(project=config["project_name"], config=config)
+        wandb.init(project=config["project_name"],
+                   name=f"bs{config['batch_size']}-lr{config['learning_rate']}-{config['time']}",
+                   config=config)
 
     def train(self):
         self.model.train()
