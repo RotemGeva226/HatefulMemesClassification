@@ -1,14 +1,16 @@
 from transformers import AutoProcessor, LlavaForConditionalGeneration
 import torch
+from torch import nn
 
-class LLaVA:
-    def __init__(self):
-        model_id = "llava-hf/llava-1.5-7b-hf"
+class LLaVA(nn.Module):
+    def __init__(self, model_id="llava-hf/llava-1.5-7b-hf", device="cuda"):
+        super().__init__()
+        self.device = device
         self.model = LlavaForConditionalGeneration.from_pretrained(
             model_id,
-            torch_dtype=torch.float16,
+            torch_dtype=torch.float16 if device == "cuda" else torch.float32,
             low_cpu_mem_usage=True,
-        ).to(0)
+        ).to(device)
 
         self.processor = AutoProcessor.from_pretrained(model_id, revision='a272c74')
 
@@ -17,21 +19,22 @@ class LLaVA:
             param.requires_grad = False
 
         # Add classification head (simple linear layer)
-        self.classifier = torch.nn.Sequential(
-            torch.nn.Linear(1024, 128),
-            torch.nn.ReLU(),
-            torch.nn.Dropout(0.2),
-            torch.nn.Linear(128, 2)  # Binary classification: 0 or 1
-        )
+        self.classifier = nn.Sequential(
+            nn.Linear(1024, 128),
+            nn.ReLU(),
+            nn.Dropout(0.2),
+            nn.Linear(128, 2)  # Binary classification: 0 or 1
+        ).to(self.device).half()
 
     def forward(self, images, prompts):
         # Preprocess inputs
-        inputs = self.processor(text=prompts, images=images, return_tensors="pt", padding=True, truncation=True).to(0)
+        inputs = self.processor(text=prompts, images=images, return_tensors="pt", padding=True, truncation=True)
+        inputs = {k: v.to(self.device) for k, v in inputs.items()}
 
         # Get last hidden state from LLaVA encoder
         with torch.no_grad():
-            outputs = self.model.vision_tower(images=inputs["pixel_values"])
-            image_embeds = outputs.last_hidden_state  # shape: [B, N, D]
+            outputs = self.model.vision_tower(pixel_values=inputs["pixel_values"])
+            image_embeds = outputs.last_hidden_state.to(self.device)  # shape: [B, N, D]
 
         # Aggregate embeddings (e.g., mean-pooling over spatial tokens)
         pooled = image_embeds.mean(dim=1)  # shape: [B, D]
