@@ -125,28 +125,52 @@ class Trainer:
         print(f"Checkpoint loaded from {path}, resuming at epoch {epoch}")
         return epoch, loss
 
-    def train(self):
+    def train(self, accumulation_steps=32):
         self.model.train()
+        scaler = torch.cuda.amp.GradScaler()
+
         try:
             for epoch in range(self.config["epochs"]):
-                total_loss = 0
+                total_loss = 0.0
                 all_logits = []
                 all_labels = []
+                gradient_accumulated = 0
 
-                for images, prompts, labels in tqdm(self.train_loader, desc=f"Epoch {epoch + 1}"):
+                self.optimizer.zero_grad()
+
+                for step, (images, prompts, labels) in enumerate(tqdm(self.train_loader, desc=f"Epoch {epoch + 1}")):
                     labels = labels.to(self.device)
-                    logits = self.model(images, prompts)
-                    loss = self.criterion(logits.view(-1), labels.float().view(-1))
 
-                    self.optimizer.zero_grad()
-                    loss.backward()
-                    self.optimizer.step()
+                    with torch.cuda.amp.autocast():
+                        logits = self.model(images, prompts)
+                        loss = self.criterion(logits.view(-1), labels.float().view(-1))
+                        loss = loss / accumulation_steps  # scale loss
 
-                    wandb.log({"batch_loss": loss.item()}, step=epoch+1)
-                    total_loss += loss.item()
+                    scaler.scale(loss).backward()
+                    gradient_accumulated += 1
+
+                    if gradient_accumulated == accumulation_steps:
+                        scaler.step(self.optimizer)
+                        scaler.update()
+                        self.optimizer.zero_grad()
+                        gradient_accumulated = 0
+                        print(f"[Step {step}] Optimizer stepped")
+
+                    total_loss += loss.item() * accumulation_steps  # Unscale to original loss
 
                     all_logits.append(logits.detach())
                     all_labels.append(labels.detach())
+
+                    if (step + 1) % accumulation_steps == 0:
+                        wandb.log({"batch_loss": loss.item() * accumulation_steps},
+                                  step=epoch * len(self.train_loader) + step)
+
+                # Final step if leftover gradients were accumulated but not stepped
+                if gradient_accumulated > 0:
+                    scaler.step(self.optimizer)
+                    scaler.update()
+                    self.optimizer.zero_grad()
+                    print(f"[Epoch {epoch}] Final optimizer step for leftover gradients")
 
                 avg_loss = total_loss / len(self.train_loader)
 
@@ -159,5 +183,6 @@ class Trainer:
 
                 val_loss = self.validate(epoch)
                 self.check_early_stopping(val_loss, epoch)
+
         except StopIteration:
             print("⏹️ Early stopping triggered. Training halted.")
