@@ -10,6 +10,7 @@ config = {
     "batch_size":1,
     "epochs": 3,
     "learning_rate": 2e-5,
+    "patience": 3,
     "project_name": "llava-meme-classifier",
     "model_id": "llava-hf/llava-1.5-7b-hf",
     "device": "cuda" if torch.cuda.is_available() else "cpu",
