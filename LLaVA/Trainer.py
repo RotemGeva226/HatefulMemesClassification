@@ -7,9 +7,10 @@ from sklearn.utils.class_weight import compute_class_weight
 import numpy as np
 
 class Trainer:
-    def __init__(self, model, train_loader, config):
+    def __init__(self, model, train_loader, val_loader, config):
         self.model = model
         self.train_loader = train_loader
+        self.val_loader = val_loader
         self.config = config
         self.device = config["device"]
         self.optimizer = torch.optim.AdamW(model.classifier.parameters(), lr=config["learning_rate"])
@@ -27,6 +28,33 @@ class Trainer:
         # Get only the pos_weight (weight for class 1)
         pos_weight = class_weights[1] / class_weights[0]  # Or just class_weights[1]
         return torch.tensor(pos_weight, dtype=torch.float32)
+
+    @torch.no_grad()
+    def validate(self, epoch):
+        self.model.eval()
+        total_loss = 0
+        all_logits = []
+        all_labels = []
+
+        for images, prompts, labels in tqdm(self.val_loader, desc=f"Validation Epoch {epoch + 1}"):
+            labels = labels.to(self.device)
+            logits = self.model(images, prompts)
+
+            loss = self.criterion(logits.view(-1), labels.float().view(-1))
+            total_loss += loss.item()
+
+            all_logits.append(logits.detach())
+            all_labels.append(labels.detach())
+
+        avg_loss = total_loss / len(self.val_loader)
+        all_logits = torch.cat(all_logits, dim=0)
+        all_labels = torch.cat(all_labels, dim=0)
+
+        metrics = self.compute_metrics(all_logits, all_labels)
+        self.log_metrics(epoch, avg_loss, metrics, prefix="val")
+        print(f"[Validation Epoch {epoch + 1}] Loss: {avg_loss:.4f}")
+
+        return avg_loss
 
     @staticmethod
     def compute_metrics(logits, labels):
@@ -76,6 +104,9 @@ class Trainer:
             all_logits = torch.cat(all_logits, dim=0)
             all_labels = torch.cat(all_labels, dim=0)
 
-            metrics = self.compute_metrics(all_logits, all_labels)
-            self.log_metrics(epoch, avg_loss, metrics)
-            print(f"[Epoch {epoch + 1}] Loss: {avg_loss:.4f}")
+                metrics = self.compute_metrics(all_logits, all_labels)
+                self.log_metrics(epoch, avg_loss, metrics)
+                print(f"[Epoch {epoch + 1}] Loss: {avg_loss:.4f}")
+
+                self.validate(epoch)
+
