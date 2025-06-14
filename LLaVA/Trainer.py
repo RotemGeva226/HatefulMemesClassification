@@ -39,14 +39,14 @@ class Trainer:
         return {"auroc": auc, "accuracy": acc, "f1": f1}
 
     @staticmethod
-    def log_metrics(epoch, loss, metrics):
-        wandb.log({
-            "epoch": epoch + 1,
-            "epoch_loss": loss,
-            "epoch_auroc": metrics["auroc"],
-            "epoch_accuracy": metrics["accuracy"],
-            "epoch_f1": metrics["f1"]
-        })
+    def log_metrics(epoch, loss, metrics, prefix="train"):
+        log_dict = {
+            f"{prefix}_loss": loss,
+            f"{prefix}_auroc": metrics["auroc"],
+            f"{prefix}_accuracy": metrics["accuracy"],
+            f"{prefix}_f1": metrics["f1"],
+        }
+        wandb.log(log_dict, step=epoch+1)
 
     def train(self):
         self.model.train()
