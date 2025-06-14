@@ -15,6 +15,10 @@ class Trainer:
         self.device = config["device"]
         self.optimizer = torch.optim.AdamW(model.classifier.parameters(), lr=config["learning_rate"])
         self.criterion = nn.BCEWithLogitsLoss(pos_weight=self.compute_class_weights().to(self.device))
+        self.best_val_loss = float("inf")
+        self.epochs_without_improvement = 0
+        self.patience = config['patience']
+        self.checkpoint_path = f"checkpoint_{config['time']}.pth"
         wandb.init(project=config["project_name"],
                    name=f"bs{config['batch_size']}-lr{config['learning_rate']}-{config['time']}",
                    config=config)
@@ -28,6 +32,19 @@ class Trainer:
         # Get only the pos_weight (weight for class 1)
         pos_weight = class_weights[1] / class_weights[0]  # Or just class_weights[1]
         return torch.tensor(pos_weight, dtype=torch.float32)
+
+    def check_early_stopping(self, val_loss):
+        if val_loss < self.best_val_loss:
+            print(f"✅ Validation loss improved ({self.best_val_loss:.4f} → {val_loss:.4f}). Saving checkpoint.")
+            self.best_val_loss = val_loss
+            self.epochs_without_improvement = 0
+            torch.save(self.model.state_dict(), self.checkpoint_path)
+            wandb.run.summary["best_val_loss"] = val_loss
+        else:
+            self.epochs_without_improvement += 1
+            print(f"⚠️ No improvement. Patience: {self.epochs_without_improvement}/{self.patience}")
+            if self.epochs_without_improvement >= self.patience:
+                raise StopIteration
 
     @torch.no_grad()
     def validate(self, epoch):
@@ -78,11 +95,11 @@ class Trainer:
 
     def train(self):
         self.model.train()
-
-        for epoch in range(self.config["epochs"]):
-            total_loss = 0
-            all_logits = []
-            all_labels = []
+        try:
+            for epoch in range(self.config["epochs"]):
+                total_loss = 0
+                all_logits = []
+                all_labels = []
 
             for images, prompts, labels in tqdm(self.train_loader, desc=f"Epoch {epoch + 1}"):
                 labels = labels.to(self.device)
@@ -108,5 +125,9 @@ class Trainer:
                 self.log_metrics(epoch, avg_loss, metrics)
                 print(f"[Epoch {epoch + 1}] Loss: {avg_loss:.4f}")
 
-                self.validate(epoch)
+                val_loss = self.validate(epoch)
+                self.check_early_stopping(val_loss)
+        except StopIteration:
+            print("⏹️ Early stopping triggered. Training halted.")
+
 
