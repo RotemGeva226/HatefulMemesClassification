@@ -23,7 +23,7 @@ class LLaVA(nn.Module):
             nn.Linear(1024, 128),
             nn.ReLU(),
             nn.Dropout(0.2),
-            nn.Linear(128, 2)  # Binary classification: 0 or 1
+            nn.Linear(128, 1)  # Binary classification: 0 or 1
         ).to(self.device)
 
     def forward(self, images, prompts):
@@ -33,10 +33,10 @@ class LLaVA(nn.Module):
 
         # Get last hidden state from LLaVA encoder
         with torch.no_grad():
-            outputs = self.model.vision_tower(pixel_values=inputs["pixel_values"])
+            outputs = self.model.vision_tower(pixel_values=inputs["pixel_values"]) # Extract image embeddings
             image_embeds = outputs.last_hidden_state.to(self.device)  # shape: [B, N, D]
 
-        # Aggregate embeddings (e.g., mean-pooling over spatial tokens)
+        # Mean pooling -> to get fixed-size representation
         pooled = image_embeds.mean(dim=1)  # shape: [B, D]
         pooled = pooled.float()
 
