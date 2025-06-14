@@ -33,12 +33,12 @@ class Trainer:
         pos_weight = class_weights[1] / class_weights[0]  # Or just class_weights[1]
         return torch.tensor(pos_weight, dtype=torch.float32)
 
-    def check_early_stopping(self, val_loss):
+    def check_early_stopping(self, val_loss, epoch):
         if val_loss < self.best_val_loss:
             print(f"✅ Validation loss improved ({self.best_val_loss:.4f} → {val_loss:.4f}). Saving checkpoint.")
             self.best_val_loss = val_loss
             self.epochs_without_improvement = 0
-            torch.save(self.model.state_dict(), self.checkpoint_path)
+            self.save_checkpoint(epoch, val_loss)
             wandb.run.summary["best_val_loss"] = val_loss
         else:
             self.epochs_without_improvement += 1
@@ -93,6 +93,38 @@ class Trainer:
         }
         wandb.log(log_dict, step=epoch+1)
 
+    def save_checkpoint(self, epoch=None, loss=None):
+        path = self.checkpoint_path
+        checkpoint = {
+            "model_state_dict": self.model.state_dict(),
+            "optimizer_state_dict": self.optimizer.state_dict(),
+            "epoch": epoch,
+            "loss": loss,
+            "best_val_loss": self.best_val_loss,
+            "epochs_without_improvement": self.epochs_without_improvement,
+        }
+        torch.save(checkpoint, path)
+        print(f"Checkpoint saved to {path}")
+
+    def load_checkpoint(self, path):
+        torch.cuda.empty_cache()
+        checkpoint = torch.load(path, map_location='cpu')
+
+        self.model.load_state_dict(checkpoint["model_state_dict"])
+        self.optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
+
+        self.best_val_loss = checkpoint.get("best_val_loss", float("inf"))
+        self.epochs_without_improvement = checkpoint.get("epochs_without_improvement", 0)
+
+        epoch = checkpoint.get("epoch", 0)
+        loss = checkpoint.get("loss", None)
+
+        self.model.to(self.device)
+        self.model.eval()
+
+        print(f"Checkpoint loaded from {path}, resuming at epoch {epoch}")
+        return epoch, loss
+
     def train(self):
         self.model.train()
         try:
@@ -101,33 +133,31 @@ class Trainer:
                 all_logits = []
                 all_labels = []
 
-            for images, prompts, labels in tqdm(self.train_loader, desc=f"Epoch {epoch + 1}"):
-                labels = labels.to(self.device)
-                logits = self.model(images, prompts)
-                loss = self.criterion(logits.view(-1), labels.float().view(-1))
+                for images, prompts, labels in tqdm(self.train_loader, desc=f"Epoch {epoch + 1}"):
+                    labels = labels.to(self.device)
+                    logits = self.model(images, prompts)
+                    loss = self.criterion(logits.view(-1), labels.float().view(-1))
 
-                self.optimizer.zero_grad()
-                loss.backward()
-                self.optimizer.step()
+                    self.optimizer.zero_grad()
+                    loss.backward()
+                    self.optimizer.step()
 
                     wandb.log({"batch_loss": loss.item()}, step=epoch+1)
                     total_loss += loss.item()
 
-                all_logits.append(logits.detach())
-                all_labels.append(labels.detach())
+                    all_logits.append(logits.detach())
+                    all_labels.append(labels.detach())
 
-            avg_loss = total_loss / len(self.train_loader)
+                avg_loss = total_loss / len(self.train_loader)
 
-            all_logits = torch.cat(all_logits, dim=0)
-            all_labels = torch.cat(all_labels, dim=0)
+                all_logits = torch.cat(all_logits, dim=0)
+                all_labels = torch.cat(all_labels, dim=0)
 
                 metrics = self.compute_metrics(all_logits, all_labels)
                 self.log_metrics(epoch, avg_loss, metrics)
                 print(f"[Epoch {epoch + 1}] Loss: {avg_loss:.4f}")
 
                 val_loss = self.validate(epoch)
-                self.check_early_stopping(val_loss)
+                self.check_early_stopping(val_loss, epoch)
         except StopIteration:
             print("⏹️ Early stopping triggered. Training halted.")
-
-
