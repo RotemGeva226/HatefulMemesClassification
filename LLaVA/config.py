@@ -13,6 +13,7 @@ config = {
     "project_name": "llava-meme-classifier",
     "model_id": "llava-hf/llava-1.5-7b-hf",
     "device": "cuda" if torch.cuda.is_available() else "cpu",
-    "data_path": RAW_DATA_DIR / "train.jsonl",
+    "train_path": RAW_DATA_DIR / "train.jsonl",
+    "validation_path": RAW_DATA_DIR / "dev.jsonl",
     "time": CURR_TIME
 }
