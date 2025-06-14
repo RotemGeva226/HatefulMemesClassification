@@ -3,6 +3,8 @@ import wandb
 from tqdm import tqdm
 from torch import nn
 from sklearn.metrics import roc_auc_score, accuracy_score, f1_score
+from sklearn.utils.class_weight import compute_class_weight
+import numpy as np
 
 class Trainer:
     def __init__(self, model, train_loader, config):
@@ -11,14 +13,25 @@ class Trainer:
         self.config = config
         self.device = config["device"]
         self.optimizer = torch.optim.AdamW(model.classifier.parameters(), lr=config["learning_rate"])
+        self.criterion = nn.BCEWithLogitsLoss(pos_weight=self.compute_class_weights().to(self.device))
         wandb.init(project=config["project_name"],
                    name=f"bs{config['batch_size']}-lr{config['learning_rate']}-{config['time']}",
                    config=config)
 
+    def compute_class_weights(self):
+        class_weights = compute_class_weight(
+            class_weight='balanced',
+            classes=np.array([0, 1]),
+            y=self.train_loader.dataset.df['label']
+        )
+        # Get only the pos_weight (weight for class 1)
+        pos_weight = class_weights[1] / class_weights[0]  # Or just class_weights[1]
+        return torch.tensor(pos_weight, dtype=torch.float32)
+
     @staticmethod
     def compute_metrics(logits, labels):
-        probs = torch.softmax(logits, dim=1)[:, 1].cpu().numpy()
-        preds = logits.argmax(dim=1).cpu().numpy()
+        probs = torch.sigmoid(logits).squeeze().cpu().numpy()  # Probabilities for class 1
+        preds = (probs >= 0.5).astype(int)  # Convert to binary predictions
         labels_np = labels.cpu().numpy()
         auc = roc_auc_score(labels_np, probs)
         acc = accuracy_score(labels_np, preds)
@@ -46,7 +59,7 @@ class Trainer:
             for images, prompts, labels in tqdm(self.train_loader, desc=f"Epoch {epoch + 1}"):
                 labels = labels.to(self.device)
                 logits = self.model(images, prompts)
-                loss = nn.functional.cross_entropy(logits, labels)
+                loss = self.criterion(logits.view(-1), labels.float().view(-1))
 
                 self.optimizer.zero_grad()
                 loss.backward()
