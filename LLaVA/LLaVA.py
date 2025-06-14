@@ -40,7 +40,7 @@ class LLaVA(nn.Module):
         pooled = image_embeds.mean(dim=1)  # shape: [B, D]
         pooled = pooled.float()
 
-        # Classify
+        # Classify (large negative logit: high confidence in class 0, around 0: uncertain)
         logits = self.classifier(pooled)
         logits = logits.float()
         return logits
