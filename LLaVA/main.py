@@ -8,12 +8,22 @@ from config import config
 
 
 # Prepare dataframe
-df = pd.read_json(config["data_path"], lines=True)
+df_train = pd.read_json(config["train_path"], lines=True)
+df_val = pd.read_json(config["validation_path"], lines=True)
 
-# Load dataset
-dataset = LLaVAMemesDataset(df)
-loader = DataLoader(
-    dataset,
+# Load train dataset
+train_dataset = LLaVAMemesDataset(df_train)
+train_loader = DataLoader(
+    train_dataset,
+    batch_size=config["batch_size"],
+    shuffle=True,
+    collate_fn=collate_fn
+)
+
+# Load val dataset
+val_dataset = LLaVAMemesDataset(df_val)
+val_loader = DataLoader(
+    val_dataset,
     batch_size=config["batch_size"],
     shuffle=True,
     collate_fn=collate_fn
@@ -26,5 +36,5 @@ model = LLaVA(
 )
 
 # Train
-trainer = Trainer(model, loader, config)
+trainer = Trainer(model, train_loader, val_loader, config)
 trainer.train()
