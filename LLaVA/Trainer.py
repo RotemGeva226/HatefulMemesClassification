@@ -110,8 +110,8 @@ class Trainer:
                 loss.backward()
                 self.optimizer.step()
 
-                wandb.log({"batch_loss": loss.item()})
-                total_loss += loss.item()
+                    wandb.log({"batch_loss": loss.item()}, step=epoch+1)
+                    total_loss += loss.item()
 
                 all_logits.append(logits.detach())
                 all_labels.append(labels.detach())
