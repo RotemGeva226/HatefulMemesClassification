@@ -17,6 +17,8 @@ train_loader = DataLoader(
     train_dataset,
     batch_size=config["batch_size"],
     shuffle=True,
+    pin_memory=True,
+    num_workers=config["num_workers"],
     collate_fn=collate_fn
 )
 
@@ -26,6 +28,8 @@ val_loader = DataLoader(
     val_dataset,
     batch_size=config["batch_size"],
     shuffle=True,
+    pin_memory=True,
+    num_workers=config["num_workers"],
     collate_fn=collate_fn
 )
 
