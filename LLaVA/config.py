@@ -8,9 +8,10 @@ CURR_TIME = datetime.now().strftime('%Y%m%d-%H%M%S')
 
 config = {
     "batch_size":1,
-    "epochs": 3,
+    "epochs": 6,
     "learning_rate": 2e-5,
-    "patience": 3,
+    "patience": 2,
+    "num_workers": 0,
     "project_name": "llava-meme-classifier",
     "model_id": "llava-hf/llava-1.5-7b-hf",
     "device": "cuda" if torch.cuda.is_available() else "cpu",
