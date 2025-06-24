@@ -1,3 +1,4 @@
+import gc
 import torch
 from tqdm import tqdm
 from torch import nn
@@ -109,6 +110,10 @@ class Trainer:
                         gradient_accumulated = 0
                         print(f"[Step {step}] Optimizer stepped")
 
+                        # clean memory
+                        torch.cuda.empty_cache()
+                        gc.collect()
+
                     total_loss += loss.item() * accumulation_steps  # Unscale to original loss
 
                     all_logits.append(logits.detach())
@@ -124,18 +129,17 @@ class Trainer:
                     scaler.update()
                     self.optimizer.zero_grad()
                     print(f"[Epoch {epoch}] Final optimizer step for leftover gradients")
+                    torch.cuda.empty_cache()
+                    gc.collect()
 
                 avg_loss = total_loss / len(self.train_loader)
 
-                all_logits = torch.cat(all_logits, dim=0)
-                all_labels = torch.cat(all_labels, dim=0)
-
-                metrics = self.compute_metrics(all_logits, all_labels)
-                self.logger.log_epoch_metrics(epoch, avg_loss, metrics)
+                self.logger.log_epoch_metrics(epoch, avg_loss, {})
                 print(f"[Epoch {epoch + 1}] Loss: {avg_loss:.4f}")
 
                 val_loss = self.validate(epoch)
                 self.check_early_stopping(val_loss, epoch)
+                torch.cuda.empty_cache()
 
         except StopIteration:
             print("⏹️ Early stopping triggered. Training halted.")
@@ -154,8 +158,8 @@ class Trainer:
             loss = self.criterion(logits.view(-1), labels.float().view(-1))
             total_loss += loss.item()
 
-            all_logits.append(logits.detach())
-            all_labels.append(labels.detach())
+            all_logits.append(logits.detach().cpu())
+            all_labels.append(labels.detach().cpu())
 
         avg_loss = total_loss / len(self.val_loader)
         all_logits = torch.cat(all_logits, dim=0)
@@ -165,6 +169,8 @@ class Trainer:
         self.logger.log_epoch_metrics(epoch, avg_loss, metrics, prefix="val")
         print(f"[Validation Epoch {epoch + 1}] Loss: {avg_loss:.4f}")
 
+        # Clean up memory
+        torch.cuda.empty_cache()
         return avg_loss
 
     @staticmethod
