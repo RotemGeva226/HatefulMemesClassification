@@ -72,19 +72,18 @@ class Trainer:
         checkpoint = torch.load(path, map_location='cpu')
 
         self.model.load_state_dict(checkpoint["model_state_dict"])
-        self.optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
-
-        self.best_val_loss = checkpoint.get("best_val_loss", float("inf"))
-        self.epochs_without_improvement = checkpoint.get("epochs_without_improvement", 0)
-
-        epoch = checkpoint.get("epoch", 0)
-        loss = checkpoint.get("loss", None)
-
         self.model.to(self.device)
-        self.model.eval()
+        torch.cuda.empty_cache()
 
-        print(f"Checkpoint loaded from {path}, resuming at epoch {epoch}")
-        return epoch, loss
+        if self.config["mode"] != "test":
+            # Only load optimizer and training state if resuming training
+            self.optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
+            self.best_val_loss = checkpoint.get("best_val_loss", float("inf"))
+            self.epochs_without_improvement = checkpoint.get("epochs_without_improvement", 0)
+            epoch = checkpoint.get("epoch", 0)
+            loss = checkpoint.get("loss", None)
+            return epoch, loss
+        return None, None
 
     def train(self, accumulation_steps=32):
         self.model.train()
