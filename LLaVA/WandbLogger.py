@@ -4,9 +4,12 @@ class WandbLogger:
     def __init__(self, config):
         print("Initializing WandbLogger")
         self.config = config
+        run_name = config["run_name"] if config["mode"] == "test" else\
+            f"bs{config['batch_size']}-lr{config['learning_rate']}-{config['time']}"
+        run_name += f"-{config['mode']}"
         self.run = wandb.init(
             project=config["project_name"],
-            name=f"bs{config['batch_size']}-lr{config['learning_rate']}-{config['time']}",
+            name=run_name,
             config=config
         )
         self.define_metrics()

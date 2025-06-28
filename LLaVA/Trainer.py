@@ -5,23 +5,31 @@ from torch import nn
 from sklearn.metrics import roc_auc_score, accuracy_score, f1_score
 from sklearn.utils.class_weight import compute_class_weight
 import numpy as np
+
+from MetricAccumulator import MetricAccumulator
 from WandbLogger import WandbLogger
 
 class Trainer:
-    def __init__(self, model, train_loader, val_loader, config):
+    def __init__(self, model, train_loader, val_loader, test_loader, config):
         self.model = model
         self.train_loader = train_loader
         self.val_loader = val_loader
+        self.test_loader = test_loader
         self.config = config
         self.device = config["device"]
         self.logger = WandbLogger(config)
 
-        self.optimizer = torch.optim.AdamW(model.classifier.parameters(), lr=config["learning_rate"])
-        self.criterion = nn.BCEWithLogitsLoss(pos_weight=self.compute_class_weights().to(self.device))
+        if self.train_loader is not None:
+            self.optimizer = torch.optim.AdamW(model.classifier.parameters(), lr=config["learning_rate"])
+            self.criterion = nn.BCEWithLogitsLoss(pos_weight=self.compute_class_weights().to(self.device))
+        else:
+            # For test mode, optimizer & criterion but without class weights:
+            self.criterion = nn.BCEWithLogitsLoss()
+
         self.best_val_loss = float("inf")
         self.epochs_without_improvement = 0
         self.patience = config['patience']
-        self.checkpoint_path = f"checkpoint_{config['time']}.pth"
+        self.checkpoint_path = config['checkpoint_path'] if config['mode'] == "test" else f"checkpoint_{config['time']}.pth"
 
     def compute_class_weights(self):
         class_weights = compute_class_weight(
@@ -172,6 +180,35 @@ class Trainer:
         # Clean up memory
         torch.cuda.empty_cache()
         return avg_loss
+
+    @torch.no_grad()
+    def test(self):
+        self.model.eval()
+        total_loss = 0
+
+        # Initialize metric accumulators instead of storing all data
+        metric_accumulator = MetricAccumulator()
+
+        for images, prompts, labels in tqdm(self.test_loader, desc="Testing"):
+            labels = labels.to(self.device)
+            logits = self.model(images, prompts)
+
+            loss = self.criterion(logits.view(-1), labels.float().view(-1))
+            total_loss += loss.item()
+
+            # Update metrics incrementally without storing tensors
+            metric_accumulator.update(logits, labels)
+
+            # Clear GPU cache if needed
+            del logits, loss
+            torch.cuda.empty_cache()
+
+        avg_loss = total_loss / len(self.test_loader)
+        metrics = metric_accumulator.compute()
+
+        self.logger.log_epoch_metrics(epoch=1, loss=avg_loss, metrics=metrics, prefix="test")
+        print(f"[Test] Loss: {avg_loss:.4f}")
+        print(f"[Test] Metrics: {metrics}")
 
     @staticmethod
     def compute_metrics(logits, labels):
