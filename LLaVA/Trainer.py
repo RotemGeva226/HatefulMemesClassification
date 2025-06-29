@@ -5,7 +5,6 @@ from torch import nn
 from sklearn.metrics import roc_auc_score, accuracy_score, f1_score
 from sklearn.utils.class_weight import compute_class_weight
 import numpy as np
-
 from MetricAccumulator import MetricAccumulator
 from WandbLogger import WandbLogger
 
@@ -93,8 +92,6 @@ class Trainer:
         try:
             for epoch in range(self.config["epochs"]):
                 total_loss = 0.0
-                all_logits = []
-                all_labels = []
                 gradient_accumulated = 0
 
                 self.optimizer.zero_grad()
@@ -123,8 +120,8 @@ class Trainer:
 
                     total_loss += loss.item() * accumulation_steps  # Unscale to original loss
 
-                    all_logits.append(logits.detach())
-                    all_labels.append(labels.detach())
+                    # Clear GPU memory immediately
+                    del logits, loss
 
                     if (step + 1) % accumulation_steps == 0:
                         batch_counter += 1
@@ -155,8 +152,7 @@ class Trainer:
     def validate(self, epoch):
         self.model.eval()
         total_loss = 0
-        all_logits = []
-        all_labels = []
+        metric_accumulator = MetricAccumulator()
 
         for images, prompts, labels in tqdm(self.val_loader, desc=f"Validation Epoch {epoch + 1}"):
             labels = labels.to(self.device)
@@ -165,14 +161,15 @@ class Trainer:
             loss = self.criterion(logits.view(-1), labels.float().view(-1))
             total_loss += loss.item()
 
-            all_logits.append(logits.detach().cpu())
-            all_labels.append(labels.detach().cpu())
+            metric_accumulator.update(logits, labels)
+
+            # Clear GPU cache if needed
+            del logits, loss
+            torch.cuda.empty_cache()
 
         avg_loss = total_loss / len(self.val_loader)
-        all_logits = torch.cat(all_logits, dim=0)
-        all_labels = torch.cat(all_labels, dim=0)
+        metrics = metric_accumulator.compute()
 
-        metrics = self.compute_metrics(all_logits, all_labels)
         self.logger.log_epoch_metrics(epoch, avg_loss, metrics, prefix="val")
         print(f"[Validation Epoch {epoch + 1}] Loss: {avg_loss:.4f}")
 
