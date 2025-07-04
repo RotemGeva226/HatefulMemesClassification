@@ -18,12 +18,16 @@ class LLaVA(nn.Module):
         for param in self.model.parameters():
             param.requires_grad = False
 
-        # Add classification head (simple linear layer)
+        # Add classification head
         self.classifier = nn.Sequential(
-            nn.Linear(1024, 128),
-            nn.ReLU(),
-            nn.Dropout(0.2),
-            nn.Linear(128, 1)  # Binary classification: 0 or 1
+            nn.Linear(1024, 512),
+            nn.LayerNorm(512),
+            nn.GELU(),
+            nn.Dropout(0.3),
+            nn.Linear(512, 256),
+            nn.GELU(),
+            nn.Dropout(0.3),
+            nn.Linear(256, 1)
         ).to(self.device)
 
     def forward(self, images, prompts):
