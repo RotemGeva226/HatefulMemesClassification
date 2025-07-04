@@ -92,52 +92,48 @@ class Trainer:
         try:
             for epoch in range(self.config["epochs"]):
                 total_loss = 0.0
-                gradient_accumulated = 0
 
                 self.optimizer.zero_grad()
 
                 for step, (images, prompts, labels) in enumerate(tqdm(self.train_loader, desc=f"Epoch {epoch + 1}")):
-                    labels = labels.to(self.device)
+                    labels = labels.to(self.device, non_blocking=True)
 
                     with torch.cuda.amp.autocast():
                         logits = self.model(images, prompts)
                         loss = self.criterion(logits.view(-1), labels.float().view(-1))
                         loss = loss / accumulation_steps  # scale loss
 
+                    loss_value = loss.item()
+
                     scaler.scale(loss).backward()
-                    gradient_accumulated += 1
-
-                    if gradient_accumulated == accumulation_steps:
-                        scaler.step(self.optimizer)
-                        scaler.update()
-                        self.optimizer.zero_grad()
-                        gradient_accumulated = 0
-                        print(f"[Step {step}] Optimizer stepped")
-
-                        # clean memory
-                        torch.cuda.empty_cache()
-                        gc.collect()
-
-                    total_loss += loss.item() * accumulation_steps  # Unscale to original loss
 
                     # Clear GPU memory immediately
                     del logits, loss
 
-                    if (step + 1) % accumulation_steps == 0:
+                    if  (step + 1) % accumulation_steps == 0:
+                        scaler.step(self.optimizer)
+                        scaler.update()
+                        self.optimizer.zero_grad()
+
                         batch_counter += 1
-                        self.logger.log_batch_loss(loss.item() * accumulation_steps, batch_counter)
+                        print(f"[Step {step}] Optimizer stepped")
+
+                        if batch_counter % 10 == 0:
+                            torch.cuda.empty_cache()
+
+                    total_loss += loss_value * accumulation_steps  # Unscale to original loss
+
+                    if (step + 1) % accumulation_steps == 0:
+                        self.logger.log_batch_loss(loss_value * accumulation_steps, batch_counter)
 
                 # Final step if leftover gradients were accumulated but not stepped
-                if gradient_accumulated > 0:
+                if (len(self.train_loader) % accumulation_steps) != 0:
                     scaler.step(self.optimizer)
                     scaler.update()
                     self.optimizer.zero_grad()
                     print(f"[Epoch {epoch}] Final optimizer step for leftover gradients")
-                    torch.cuda.empty_cache()
-                    gc.collect()
 
                 avg_loss = total_loss / len(self.train_loader)
-
                 self.logger.log_epoch_metrics(epoch, avg_loss, {})
                 print(f"[Epoch {epoch + 1}] Loss: {avg_loss:.4f}")
 
