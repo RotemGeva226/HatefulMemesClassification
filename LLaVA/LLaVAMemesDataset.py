@@ -1,13 +1,12 @@
 import os
-from pathlib import Path
 import pandas as pd
 from torch.utils.data import Dataset
 from PIL import Image
 import torch
 import matplotlib.pyplot as plt
+from utils import BASE_PATH
 
-BASE_PATH = Path(r"C:\Users\rotem.geva\PycharmProjects\HatefulMemesClassification")
-RAW_DATA_DIR = BASE_PATH / "raw_data"
+RAW_DATA_DIR = BASE_PATH / "data"
 
 class LLaVAMemesDataset(Dataset):
     def __init__(self, dataframe, image_dir=RAW_DATA_DIR):

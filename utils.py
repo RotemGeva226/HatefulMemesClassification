@@ -3,7 +3,9 @@ import pandas as pd
 import json
 import kagglehub
 import torch
+from pathlib import Path
 
+BASE_PATH = Path(__file__).resolve().parent
 
 def parse_jsonl_to_df(jsonl_path: str) -> None:
     """Parse and outputs json file to pandas dataframe"""

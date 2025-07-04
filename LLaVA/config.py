@@ -1,9 +1,9 @@
 from datetime import datetime
 from pathlib import Path
 import torch
+from utils import BASE_PATH
 
-BASE_PATH = Path(r"C:\Users\rotem.geva\PycharmProjects\HatefulMemesClassification")
-RAW_DATA_DIR = BASE_PATH / "raw_data"
+RAW_DATA_DIR = BASE_PATH / "data"
 CURR_TIME = datetime.now().strftime('%Y%m%d-%H%M%S')
 
 class Config:
