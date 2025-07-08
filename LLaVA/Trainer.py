@@ -19,7 +19,8 @@ class Trainer:
         self.logger = WandbLogger(config)
 
         if self.train_loader is not None:
-            self.optimizer = torch.optim.AdamW(model.classifier.parameters(), lr=config["learning_rate"])
+            self.optimizer = torch.optim.AdamW(model.classifier.parameters(), lr=config["learning_rate"],
+                                               weight_decay=config["weight_decay"])
             self.criterion = nn.BCEWithLogitsLoss(pos_weight=self.compute_class_weights().to(self.device))
         else:
             # For test mode, optimizer & criterion but without class weights:
