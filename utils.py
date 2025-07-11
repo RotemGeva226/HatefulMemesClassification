@@ -28,6 +28,13 @@ def download_dataset(dataset_path: str = "parthplc/facebook-hateful-meme-dataset
 def collate_fn(batch):
     images,prompts,labels = zip(*batch)
     return list(images), list(prompts), torch.tensor(labels)
+def fix_duplicated_in_dev_file(json_path: str) -> None:
+    df = pd.read_json(json_path, lines=True)
+    last_column = df.columns[-1]
+    df_no_duplicates = df.drop_duplicates(subset=[last_column], keep='first')
+    output_path = os.path.splitext(json_path)[0] + '_dedup.jsonl'
+    df_no_duplicates.to_json(output_path, orient='records', lines=True)
+    print(f"Saved deduplicated data to {output_path}")
 
 if __name__ == "__main__":
     train_json_path = r"C:\Users\rotem.geva\PycharmProjects\HatefulMemesClassification\raw_data\train.jsonl"
