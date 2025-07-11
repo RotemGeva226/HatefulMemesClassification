@@ -26,8 +26,9 @@ def download_dataset(dataset_path: str = "parthplc/facebook-hateful-meme-dataset
     print(f"Dataset downloaded to: {path}")
 
 def collate_fn(batch):
-    images,prompts,labels = zip(*batch)
-    return list(images), list(prompts), torch.tensor(labels)
+    idx,images,prompts,labels = zip(*batch)
+    return list(idx),list(images), list(prompts), torch.tensor(labels)
+
 def fix_duplicated_in_dev_file(json_path: str) -> None:
     df = pd.read_json(json_path, lines=True)
     last_column = df.columns[-1]
@@ -35,6 +36,25 @@ def fix_duplicated_in_dev_file(json_path: str) -> None:
     output_path = os.path.splitext(json_path)[0] + '_dedup.jsonl'
     df_no_duplicates.to_json(output_path, orient='records', lines=True)
     print(f"Saved deduplicated data to {output_path}")
+
+def plot_tsne(X, y):
+    tsne = TSNE(n_components=2, perplexity=40, random_state=42)
+    X_tsne = tsne.fit_transform(X)
+
+    plt.figure(figsize=(10, 8))
+    plt.scatter(X_tsne[y == 0, 0], X_tsne[y == 0, 1], label="Non-Hateful", alpha=0.5)
+    plt.scatter(X_tsne[y == 1, 0], X_tsne[y == 1, 1], label="Hateful", alpha=0.5, color='red')
+    plt.legend()
+    plt.title("t-SNE of LLaVA Embeddings")
+    plt.xlabel("Component 1")
+    plt.ylabel("Component 2")
+    plt.grid(True)
+    plt.show()
+
+def save_embedding(embedding: torch.Tensor, sample_id: str):
+    embedding_np = embedding.cpu().numpy()
+    np.save(f"llava_embeddings_max_pool/{sample_id}.npy", embedding_np)
+
 
 if __name__ == "__main__":
     train_json_path = r"C:\Users\rotem.geva\PycharmProjects\HatefulMemesClassification\raw_data\train.jsonl"
