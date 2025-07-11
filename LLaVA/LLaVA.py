@@ -69,6 +69,22 @@ class LLaVA(nn.Module):
         logits = self.classifier(pooled.float())
         return logits.float()
 
+    def generate_embeddings(self, images, prompts):
+        inputs = self.processor(text=prompts, images=images, return_tensors="pt", padding=True, truncation=False)
+        inputs = {k: v.to(self.device) for k, v in inputs.items()}
+
+        with torch.no_grad():
+            # Get last hidden state from LLaVA encoder
+            outputs = self.model(
+                input_ids=inputs["input_ids"],
+                attention_mask=inputs["attention_mask"],
+                output_hidden_states=True,
+                return_dict=True,
+            )
+            last_hidden = outputs.hidden_states[-1]
+            pooled = last_hidden.max(dim=1)[0]
+            return pooled
+
 if __name__ == "__main__":
     model = LLaVA()
     print(model)
