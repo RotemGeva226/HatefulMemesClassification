@@ -1,4 +1,7 @@
 import os
+import numpy as np
+from sklearn.manifold import TSNE
+import matplotlib.pyplot as plt
 import pandas as pd
 import json
 import kagglehub
@@ -38,8 +41,10 @@ def fix_duplicated_in_data_file(json_path: str) -> None:
     df_no_duplicates.to_json(output_path, orient='records', lines=True)
     print(f"Saved deduplicated data to {output_path}")
 
-def plot_tsne(X, y):
-    tsne = TSNE(n_components=2, perplexity=40, random_state=42)
+
+def plot_tsne(X, y, plot_3d=False, perplexity=40):
+    n_components = 3 if plot_3d else 2
+    tsne = TSNE(n_components=n_components, perplexity=perplexity, random_state=42, metric='cosine')
     X_tsne = tsne.fit_transform(X)
 
     plt.figure(figsize=(10, 8))
@@ -49,6 +54,22 @@ def plot_tsne(X, y):
     plt.title("t-SNE of LLaVA Embeddings")
     plt.xlabel("Component 1")
     plt.ylabel("Component 2")
+
+    if plot_3d:
+        ax = plt.subplot(111, projection='3d')
+        ax.scatter(X_tsne[y == 0, 0], X_tsne[y == 0, 1], X_tsne[y == 0, 2], label="Non-Hateful", alpha=0.5)
+        ax.scatter(X_tsne[y == 1, 0], X_tsne[y == 1, 1], X_tsne[y == 1, 2], label="Hateful", alpha=0.5, color='red')
+        ax.set_xlabel("Component 1")
+        ax.set_ylabel("Component 2")
+        ax.set_zlabel("Component 3")
+    else:
+        plt.scatter(X_tsne[y == 0, 0], X_tsne[y == 0, 1], label="Non-Hateful", alpha=0.5)
+        plt.scatter(X_tsne[y == 1, 0], X_tsne[y == 1, 1], label="Hateful", alpha=0.5, color='red')
+        plt.xlabel("Component 1")
+        plt.ylabel("Component 2")
+
+    plt.title(f"{'3D' if plot_3d else '2D'} t-SNE of LLaVA Embeddings")
+    plt.legend()
     plt.grid(True)
     plt.show()
 
