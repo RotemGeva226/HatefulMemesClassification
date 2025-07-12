@@ -29,7 +29,7 @@ def collate_fn(batch):
     idx,images,prompts,labels = zip(*batch)
     return list(idx),list(images), list(prompts), torch.tensor(labels)
 
-def fix_duplicated_in_dev_file(json_path: str) -> None:
+def fix_duplicated_in_data_file(json_path: str) -> None:
     df = pd.read_json(json_path, lines=True)
     last_column = df.columns[-1]
     df_no_duplicates = df.drop_duplicates(subset=[last_column], keep='first')
