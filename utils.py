@@ -4,6 +4,7 @@ import json
 import kagglehub
 import torch
 from pathlib import Path
+import umap
 
 BASE_PATH = Path(__file__).resolve().parent
 
@@ -54,6 +55,30 @@ def plot_tsne(X, y):
 def save_embedding(embedding: torch.Tensor, sample_id: str):
     embedding_np = embedding.cpu().numpy()
     np.save(f"llava_embeddings_max_pool/{sample_id}.npy", embedding_np)
+def plot_umap(X, y, plot_3d=False, n_neighbors=100, min_dist=0.5):
+    n_components = 3 if plot_3d else 2
+    reducer = umap.UMAP(n_components=n_components, n_neighbors=n_neighbors, min_dist=min_dist, random_state=42, metric='cosine')
+    X_umap = reducer.fit_transform(X)
+
+    plt.figure(figsize=(10, 8))
+
+    if plot_3d:
+        ax = plt.subplot(111, projection='3d')
+        ax.scatter(X_umap[y == 0, 0], X_umap[y == 0, 1], X_umap[y == 0, 2], label="Non-Hateful", alpha=0.5)
+        ax.scatter(X_umap[y == 1, 0], X_umap[y == 1, 1], X_umap[y == 1, 2], label="Hateful", alpha=0.5, color='red')
+        ax.set_xlabel("Component 1")
+        ax.set_ylabel("Component 2")
+        ax.set_zlabel("Component 3")
+    else:
+        plt.scatter(X_umap[y == 0, 0], X_umap[y == 0, 1], label="Non-Hateful", alpha=0.5)
+        plt.scatter(X_umap[y == 1, 0], X_umap[y == 1, 1], label="Hateful", alpha=0.5, color='red')
+        plt.xlabel("Component 1")
+        plt.ylabel("Component 2")
+
+    plt.title(f"{'3D' if plot_3d else '2D'} UMAP of LLaVA Embeddings")
+    plt.legend()
+    plt.grid(True)
+    plt.show()
 
 
 if __name__ == "__main__":
