@@ -20,13 +20,18 @@ class LLaVA(nn.Module):
 
         # Add classification head
         self.classifier = nn.Sequential(
+            nn.Linear(4096, 1024),
+            nn.LayerNorm(1024),
+            nn.ReLU(),
+            nn.Dropout(0.4),
             nn.Linear(1024, 512),
             nn.LayerNorm(512),
-            nn.GELU(),
-            nn.Dropout(0.3),
+            nn.ReLU(),
+            nn.Dropout(0.4),
             nn.Linear(512, 256),
-            nn.GELU(),
-            nn.Dropout(0.3),
+            nn.LayerNorm(256),
+            nn.ReLU(),
+            nn.Dropout(0.4),
             nn.Linear(256, 1)
         ).to(self.device)
 
