@@ -36,7 +36,7 @@ if __name__ == "__main__":
     for idx, images, prompts, labels in tqdm(train_loader, desc=f"Train samples"):
 
         embeddings_pooled = model.generate_embeddings(images, prompts)
-        utils.save_embedding(embeddings_pooled, idx)
+        utils.save_embedding(embeddings_pooled, idx[0])
         all_embeddings.extend(embeddings_pooled.cpu().numpy())
         all_labels.extend(labels.cpu().numpy())
     X = np.array(all_embeddings)
