@@ -20,9 +20,15 @@ class LLaVAMemesDataset(Dataset):
         row = self.df.iloc[idx]
         image_path = os.path.join(self.image_dir, row["img"])
         image = Image.open(image_path).convert("RGB")
-        prompt = f"<image>\nUSER: {row['text'].strip()}\nASSISTANT:"
+        meme_text = row["text"].strip()
+        prompt = (
+            f"A chat between a curious user and an AI assistant specialized that detects hate speech in memes.\n"
+            f"USER: <image>\n{meme_text}\n"
+            f"Is this meme hateful? Answer only 'Yes' or 'No'.\n"
+            f"ASSISTANT:"
+        )
         label = torch.tensor(row["label"], dtype=torch.long)
-        return image, prompt, label
+        return row.id, image, prompt, label
 
     def check_sample(self, idx=0):
         """Visual check for a sample"""
