@@ -40,25 +40,6 @@ class LLaVA(nn.Module):
         inputs = self.processor(text=prompts, images=images, return_tensors="pt", padding=True, truncation=True)
         inputs = {k: v.to(self.device) for k, v in inputs.items()}
 
-        # Get last hidden state from LLaVA encoder
-        with torch.no_grad():
-            outputs = self.model.vision_tower(pixel_values=inputs["pixel_values"]) # Extract image embeddings
-            image_embeds = outputs.last_hidden_state.to(self.device)  # shape: [B, N, D]
-
-        # Mean pooling -> to get fixed-size representation
-        pooled = image_embeds.mean(dim=1)  # shape: [B, D]
-        pooled = pooled.float()
-
-        # Classify (large negative logit: high confidence in class 0, around 0: uncertain)
-        logits = self.classifier(pooled)
-        logits = logits.float()
-        return logits
-
-    def forward(self, images, prompts):
-        # Preprocess inputs
-        inputs = self.processor(text=prompts, images=images, return_tensors="pt", padding=True, truncation=True)
-        inputs = {k: v.to(self.device) for k, v in inputs.items()}
-
         with torch.no_grad():
             # Get last hidden state from LLaVA encoder
             outputs = self.model(
