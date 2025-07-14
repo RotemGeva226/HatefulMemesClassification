@@ -48,12 +48,6 @@ def plot_tsne(X, y, plot_3d=False, perplexity=40):
     X_tsne = tsne.fit_transform(X)
 
     plt.figure(figsize=(10, 8))
-    plt.scatter(X_tsne[y == 0, 0], X_tsne[y == 0, 1], label="Non-Hateful", alpha=0.5)
-    plt.scatter(X_tsne[y == 1, 0], X_tsne[y == 1, 1], label="Hateful", alpha=0.5, color='red')
-    plt.legend()
-    plt.title("t-SNE of LLaVA Embeddings")
-    plt.xlabel("Component 1")
-    plt.ylabel("Component 2")
 
     if plot_3d:
         ax = plt.subplot(111, projection='3d')
