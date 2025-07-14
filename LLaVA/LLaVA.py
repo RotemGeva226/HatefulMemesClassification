@@ -56,7 +56,7 @@ class LLaVA(nn.Module):
 
     def forward(self, images, prompts):
         # Preprocess inputs
-        inputs = self.processor(text=prompts, images=images, return_tensors="pt", padding=True, truncation=False)
+        inputs = self.processor(text=prompts, images=images, return_tensors="pt", padding=True, truncation=True)
         inputs = {k: v.to(self.device) for k, v in inputs.items()}
 
         with torch.no_grad():
@@ -64,11 +64,12 @@ class LLaVA(nn.Module):
             outputs = self.model(
                 input_ids=inputs["input_ids"],
                 attention_mask=inputs["attention_mask"],
+                pixel_values=inputs["pixel_values"],
                 output_hidden_states=True,
                 return_dict=True,
             )
             last_hidden = outputs.hidden_states[-1]
-            pooled = last_hidden.max(dim=1)[0]
+            pooled = last_hidden.mean(dim=1)
 
         # Classify (large negative logit: high confidence in class 0, around 0: uncertain)
         logits = self.classifier(pooled.float())
