@@ -57,7 +57,10 @@ class LLaVA(nn.Module):
         return logits.float()
 
     def generate_embeddings(self, images, prompts):
-        inputs = self.processor(text=prompts, images=images, return_tensors="pt", padding=True, truncation=False)
+        """No CLS token available.
+        Mean pooling is more robust
+        Pooling captures both modalities"""
+        inputs = self.processor(text=prompts, images=images, return_tensors="pt", padding=True, truncation=True)
         inputs = {k: v.to(self.device) for k, v in inputs.items()}
 
         with torch.no_grad():
@@ -65,12 +68,14 @@ class LLaVA(nn.Module):
             outputs = self.model(
                 input_ids=inputs["input_ids"],
                 attention_mask=inputs["attention_mask"],
+                pixel_values=inputs["pixel_values"],
                 output_hidden_states=True,
                 return_dict=True,
             )
             last_hidden = outputs.hidden_states[-1]
-            pooled = last_hidden.max(dim=1)[0]
-            return pooled
+            pooled = last_hidden.mean(dim=1)
+            normalized_emb = F.normalize(pooled, p=2, dim=1)
+            return normalized_emb
 
 if __name__ == "__main__":
     model = LLaVA()
