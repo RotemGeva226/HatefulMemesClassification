@@ -1,6 +1,7 @@
 from transformers import AutoProcessor, LlavaForConditionalGeneration
 import torch
 from torch import nn
+import torch.nn.functional as F
 
 class LLaVA(nn.Module):
     def __init__(self, model_id="llava-hf/llava-1.5-7b-hf", device="cuda"):
