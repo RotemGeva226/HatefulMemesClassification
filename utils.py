@@ -1,5 +1,6 @@
 import os
 import numpy as np
+from sklearn.decomposition import PCA
 from sklearn.manifold import TSNE
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -23,7 +24,6 @@ def parse_jsonl_to_df(jsonl_path: str) -> None:
     df = pd.DataFrame(data)
     df.to_csv(output_filepath, index=False)
 
-
 def download_dataset(dataset_path: str = "parthplc/facebook-hateful-meme-dataset") -> None:
     """Downloads a specified dataset from Kaggle Hub"""
     path = kagglehub.dataset_download(dataset_path)
@@ -41,11 +41,16 @@ def fix_duplicated_in_data_file(json_path: str) -> None:
     df_no_duplicates.to_json(output_path, orient='records', lines=True)
     print(f"Saved deduplicated data to {output_path}")
 
+def plot_tsne(X, y, plot_3d=False, perplexity=40, pca_components=20):
+    # PCA
+    pca = PCA(n_components=pca_components, random_state=42)
+    X_pca = pca.fit_transform(X)
+    print(f"PCA reduced X shape: {X_pca.shape}")
+    X_for_tsne = X_pca
 
-def plot_tsne(X, y, plot_3d=False, perplexity=40):
     n_components = 3 if plot_3d else 2
     tsne = TSNE(n_components=n_components, perplexity=perplexity, random_state=42, metric='cosine')
-    X_tsne = tsne.fit_transform(X)
+    X_tsne = tsne.fit_transform(X_for_tsne)
 
     plt.figure(figsize=(10, 8))
 
