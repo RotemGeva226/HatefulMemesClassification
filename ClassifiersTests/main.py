@@ -6,8 +6,16 @@ from ClassifiersTests.models_factory import create_classifier
 from ClassifiersTests.classifiers_config import classifier_config
 from sklearn.metrics import roc_auc_score, classification_report
 from sklearn.utils import compute_sample_weight
+from sklearn.decomposition import PCA
 
 
+def pca(train_data, val_data, test_data, n_components=20):
+    pca = PCA(n_components=n_components)
+    pca.fit(train_data)
+    train_data_pca = pca.transform(train_data)
+    val_data_pca = pca.transform(val_data)
+    test_data_pca = pca.transform(test_data)
+    return train_data_pca, val_data_pca, test_data_pca
 
 def load_embeddings_dataframe(directory_path):
     csv_file = [file_path for file_path in Path(directory_path).rglob("*.csv")][0]
