@@ -25,6 +25,7 @@ def load_embeddings_dataframe(directory_path):
 
 def run_experiment():
     # Load embeddings from CSV files
+    print("Loading embeddings...")
     train_embeddings_path = classifier_config.embeddings.train_path
     val_embeddings_path = classifier_config.embeddings.validation_path
     test_embeddings_path = classifier_config.embeddings.test_path
@@ -34,18 +35,21 @@ def run_experiment():
     x_test, y_test = load_embeddings_dataframe(test_embeddings_path)
 
     # Normalize the data
+    print("Normalizing data...")
     scaler = StandardScaler()
     x_train = scaler.fit_transform(x_train)
     x_validation = scaler.transform(x_validation)
     x_test = scaler.transform(x_test)
 
     # Train the classifier
+    print("Training classifier...")
     classifier = create_classifier(classifier_config.classifier.name,classifier_config.classifier.params)
     sample_weight = compute_sample_weight(class_weight='balanced', y=y_train)
-    classifier.fit(x_train,y_train, sample_weight)
+    classifier.fit(x_train,y_train, sample_weight=sample_weight, eval_set=[(x_validation, y_validation)])
     print("Training complete.")
 
     # Get predictions and probabilities
+    print("Evaluating classifier...")
     y_val_proba = classifier.predict_proba(x_validation)[:, 1]
     y_test_proba = classifier.predict_proba(x_test)[:, 1]
     y_val_preds = classifier.predict(x_validation)
