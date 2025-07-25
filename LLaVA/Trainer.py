@@ -1,4 +1,3 @@
-import gc
 import torch
 from tqdm import tqdm
 from torch import nn
