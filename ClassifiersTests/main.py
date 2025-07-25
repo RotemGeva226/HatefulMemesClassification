@@ -53,7 +53,9 @@ def run_experiment():
     print("Training classifier...")
     classifier = create_classifier(classifier_config.classifier.name,classifier_config.classifier.params)
     sample_weight = compute_sample_weight(class_weight='balanced', y=y_train)
-    classifier.fit(x_train,y_train, sample_weight=sample_weight, eval_set=[(x_validation, y_validation)])
+    # For XGBoost - uncomment the next line
+    # classifier.fit(x_train,y_train, sample_weight=sample_weight, eval_set=[(x_validation, y_validation)])
+    classifier.fit(x_train,y_train, sample_weight=sample_weight)
     print("Training complete.")
 
     # Get predictions and probabilities
