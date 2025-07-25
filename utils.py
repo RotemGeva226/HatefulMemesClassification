@@ -1,7 +1,6 @@
 import os
-import numpy as np
 from sklearn.decomposition import PCA
-from sklearn.manifold import TSNE
+from sklearn.manifold import TSNE, Isomap
 import matplotlib.pyplot as plt
 import pandas as pd
 import json
@@ -100,6 +99,21 @@ def plot_umap(X, y, plot_3d=False, n_neighbors=100, min_dist=0.5):
     plt.grid(True)
     plt.show()
 
+def plot_isomap(X, y, n_components=2, n_neighbors=10, title='Isomap Projection'):
+    print("Plotting Isomap...")
+    isomap = Isomap(n_neighbors=n_neighbors, n_components=n_components)
+    X_iso = isomap.fit_transform(X)
+
+    # Plot
+    plt.figure(figsize=(8, 6))
+    scatter = plt.scatter(X_iso[:, 0], X_iso[:, 1], c=y, cmap='Spectral', edgecolor='k', s=40)
+    plt.title(title)
+    plt.xlabel("Component 1")
+    plt.ylabel("Component 2")
+    plt.colorbar(scatter, label='Label')
+    plt.grid(True)
+    plt.tight_layout()
+    plt.show()
 
 if __name__ == "__main__":
     train_json_path = r"C:\Users\rotem.geva\PycharmProjects\HatefulMemesClassification\raw_data\train.jsonl"
