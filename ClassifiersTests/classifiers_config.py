@@ -7,9 +7,9 @@ CURR_TIME = datetime.now().strftime('%Y%m%d-%H%M%S')
 
 @dataclass
 class EmbeddingsConfig:
-    train_path: str = "llava_embeddings_mean_pool_last_hidden_train"
-    validation_path: str = "llava_embeddings_mean_pool_last_hidden_val"
-    test_path: str = "llava_embeddings_mean_pool_last_hidden_test"
+    train_path: str = os.path.join(BASE_DIR, "3", "train")
+    validation_path: str =  os.path.join(BASE_DIR, "3", "val")
+    test_path: str = os.path.join(BASE_DIR, "3", "test")
 
 @dataclass
 class ClassifierConfig:
@@ -24,11 +24,7 @@ class ExperimentConfig:
 
 # EXAMPLE CONFIG
 classifier_config = ExperimentConfig(
-    embeddings=EmbeddingsConfig(
-        train_path=os.path.join(BASE_DIR, "llava_embeddings_mean_pool_last_hidden_train"),
-        validation_path=os.path.join(BASE_DIR, "llava_embeddings_mean_pool_last_hidden_val"),
-        test_path=os.path.join(BASE_DIR, "llava_embeddings_mean_pool_last_hidden_test")
-    ),
+    embeddings=EmbeddingsConfig(),
     classifier=ClassifierConfig(
         name="mlp",
         params={
