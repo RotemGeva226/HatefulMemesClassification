@@ -40,7 +40,8 @@ def fix_duplicated_in_data_file(json_path: str) -> None:
     df_no_duplicates.to_json(output_path, orient='records', lines=True)
     print(f"Saved deduplicated data to {output_path}")
 
-def plot_tsne(X, y, plot_3d=False, perplexity=40, pca_components=20):
+def plot_tsne(X, y, plot_3d=False, perplexity=40, pca_components=100):
+    print("Plotting tsne...")
     # PCA
     pca = PCA(n_components=pca_components, random_state=42)
     X_pca = pca.fit_transform(X)
@@ -71,10 +72,8 @@ def plot_tsne(X, y, plot_3d=False, perplexity=40, pca_components=20):
     plt.grid(True)
     plt.show()
 
-def save_embedding(embedding: torch.Tensor, sample_id: str):
-    embedding_np = embedding.cpu().numpy()
-    np.save(f"llava_embeddings_max_pool/{sample_id}.npy", embedding_np)
 def plot_umap(X, y, plot_3d=False, n_neighbors=100, min_dist=0.5):
+    print("Plotting UMAP...")
     n_components = 3 if plot_3d else 2
     reducer = umap.UMAP(n_components=n_components, n_neighbors=n_neighbors, min_dist=min_dist, random_state=42, metric='cosine')
     X_umap = reducer.fit_transform(X)
