@@ -1,72 +1,21 @@
 import pandas as pd
+import torch
 from torch.utils.data import DataLoader
 from LLaVAMemesDataset import LLaVAMemesDataset
 from LLaVA import LLaVA
 from utils import collate_fn
 from config import Config
 from tqdm import tqdm
-import utils
+from utils import BASE_PATH
 import numpy as np
 import os
-from sklearn.metrics.pairwise import cosine_similarity, cosine_distances
-from matplotlib import pyplot as plt
-from sklearn.decomposition import PCA
 
-def check_similarity(x, pca=False):
-    """Wide std
-    Mean needs to be close to 0, std close to 1.
-    High similarity count should be much low then: n(n-1)/2
-    """
-    similarity_matrix = cosine_similarity(x)
 
-    # Set diagonal to 0 (self-similarity)
-    np.fill_diagonal(similarity_matrix, 0)
+"""This module handles the generation of embeddings for LLaVA memes dataset."""
 
-    # High similarity count (> 0.95 means almost identical)
-    high_sim_count = np.sum(similarity_matrix > 0.95)
-    print(f"Number of embedding pairs with cosine similarity > 0.95: {high_sim_count}")
-
-    # Mean and std
-    print("Mean embedding:", np.mean(x, axis=0)[:5])
-    print("Std of embeddings:", np.std(x, axis=0)[:5])
-
-    dists = cosine_distances(x)
-    np.fill_diagonal(dists, np.nan)
-
-    plt.hist(dists[~np.isnan(dists)].flatten(), bins=100)
-    plt.title("Histogram of Pairwise Cosine Distances")
-    plt.xlabel("Cosine Distance")
-    plt.ylabel("Frequency")
-    plt.show()
-
-    if pca:
-        pca = PCA()
-        pca.fit(x)
-        explained_variance_ratio = pca.explained_variance_ratio_
-
-        plt.plot(np.cumsum(explained_variance_ratio))
-        plt.title("Cumulative Explained Variance by PCA")
-        plt.xlabel("Number of Components")
-        plt.ylabel("Cumulative Variance")
-        plt.grid(True)
-        plt.show()
-
-def analyze_embeddings(model, loader):
-    all_embeddings = []
-    all_labels = []
-    for idx, images, prompts, labels in tqdm(loader, desc=f"Samples"):
-        embeddings_pooled = model.generate_embeddings(images, prompts)
-        # utils.save_embedding(embeddings_pooled, idx[0])
-        all_embeddings.extend(embeddings_pooled.cpu().numpy())
-        all_labels.extend(labels.cpu().numpy())
-    X = np.array(all_embeddings)
-    y = np.array(all_labels)
-    utils.plot_tsne(X,y, perplexity=15)
-    utils.plot_umap(X,y)
-    check_similarity(X)
-
-def create_embeddings_dataset(model, loader):
-    embedding_dir = os.path.join(os.getcwd(), "llava_embeddings_mean_pool_last_hidden_test")
+def create_embeddings_dataset(model, loader, embeddings_folder):
+    base_dir = r"C:\Users\rotem.geva\PycharmProjects\HatefulMemesClassification\ClassifiersTests\3"
+    embedding_dir = os.path.join(base_dir, embeddings_folder)
     rows = []
     for idx, images, prompts, labels in tqdm(loader, desc="Samples"):
         embeddings_pooled = model.generate_embeddings(images, prompts)
@@ -84,13 +33,19 @@ def create_embeddings_dataset(model, loader):
             })
 
     df = pd.DataFrame(rows)
-    df.to_csv(os.path.join(embedding_dir, "test_embeddings.csv"), index=False)
+    df.to_csv(os.path.join(embedding_dir, "embeddings_metadata.csv"), index=False)
+
+def save_embedding(embedding: torch.Tensor, sample_id: str):
+    embedding_np = embedding.cpu().numpy()
+    dest_dir = os.path.join(BASE_PATH, "ClassifiersTests", "2", "train")
+    np.save(f"{dest_dir}/{sample_id}.npy", embedding_np)
+    print("Saved embedding for sample:", sample_id)
 
 if __name__ == "__main__":
     config_wrapper = Config()
 
     # Prepare dataframe
-    df = pd.read_json(config_wrapper.config["train_path"], lines=True)
+    df = pd.read_json(config_wrapper.config["test_path"], lines=True)
 
     # Load dataset
     dataset = LLaVAMemesDataset(df)
@@ -109,4 +64,4 @@ if __name__ == "__main__":
         device=config_wrapper.config["device"]
     )
 
-    analyze_embeddings(model, loader)
+    create_embeddings_dataset(model, loader, "test")
