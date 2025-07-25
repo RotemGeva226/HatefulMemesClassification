@@ -86,6 +86,22 @@ class LLaVA(nn.Module):
             normalized_emb = F.normalize(pooled, p=2, dim=1)
             return normalized_emb
 
+    def generate_answer(self, images, prompts, max_new_tokens=20):
+        inputs = self.processor(text=prompts, images=images, return_tensors="pt", padding=True, truncation=True)
+        inputs = {k: v.to(self.device) for k, v in inputs.items()}
+
+        with torch.no_grad():
+            generated_ids = self.model.generate(
+                input_ids=inputs["input_ids"],
+                attention_mask=inputs["attention_mask"],
+                pixel_values=inputs["pixel_values"],
+                max_new_tokens=max_new_tokens,
+                do_sample=False  # You can change to True to sample randomly
+            )
+            generated_text = self.processor.batch_decode(generated_ids, skip_special_tokens=True)
+            return generated_text
+
+
 if __name__ == "__main__":
     model = LLaVA()
     print(model)
