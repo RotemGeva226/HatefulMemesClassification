@@ -104,7 +104,7 @@ class Trainer:
 
                 self.optimizer.zero_grad()
 
-                for step, (images, prompts, labels) in enumerate(tqdm(self.train_loader, desc=f"Epoch {epoch + 1}")):
+                for step, (_,images, prompts, labels) in enumerate(tqdm(self.train_loader, desc=f"Epoch {epoch + 1}")):
                     labels = labels.to(self.device, non_blocking=True)
 
                     with torch.cuda.amp.autocast():
@@ -160,7 +160,7 @@ class Trainer:
         total_loss = 0
         metric_accumulator = MetricAccumulator()
 
-        for images, prompts, labels in tqdm(self.val_loader, desc=f"Validation Epoch {epoch + 1}"):
+        for _, images, prompts, labels in tqdm(self.val_loader, desc=f"Validation Epoch {epoch + 1}"):
             labels = labels.to(self.device)
             logits = self.model(images, prompts)
 
