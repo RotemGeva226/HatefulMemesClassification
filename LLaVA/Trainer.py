@@ -22,6 +22,14 @@ class Trainer:
                 {"params": self.model.classifier.parameters(), "lr": self.config["learning_rate"]},
             ], weight_decay=config["weight_decay"])
             self.criterion = nn.BCEWithLogitsLoss(pos_weight=self.compute_class_weights().to(self.device))
+            self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+                self.optimizer,
+                mode='min',
+                factor=0.5,   # Reduce LR by half
+                patience=3,   # Wait for 3 epochs without val_loss improvement
+                min_lr=1e-6,
+                verbose=True
+            )
         else:
             # For test mode, optimizer & criterion but without class weights:
             self.criterion = nn.BCEWithLogitsLoss()
