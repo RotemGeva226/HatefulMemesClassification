@@ -49,6 +49,13 @@ def run_experiment():
     x_validation = scaler.transform(x_validation)
     x_test = scaler.transform(x_test)
 
+    # pca
+    print("Performing PCA...")
+    pca = PCA(n_components=100)
+    x_train = pca.fit_transform(x_train)
+    x_validation = pca.transform(x_validation)
+    x_test = pca.transform(x_test)
+
     # Train the classifier
     print("Training classifier...")
     classifier = create_classifier(classifier_config.classifier.name,classifier_config.classifier.params)
