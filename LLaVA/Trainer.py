@@ -148,6 +148,7 @@ class Trainer:
 
                 val_loss = self.validate(epoch)
                 self.check_early_stopping(val_loss, epoch)
+                self.scheduler.step(val_loss)
                 torch.cuda.empty_cache()
 
         except StopIteration:
