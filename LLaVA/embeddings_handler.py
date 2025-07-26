@@ -51,7 +51,7 @@ if __name__ == "__main__":
     dataset = LLaVAMemesDataset(df)
     loader = DataLoader(
         dataset,
-        batch_size=config_wrapper.config["batch_size"],
+        batch_size=1,
         shuffle=True,
         pin_memory=True,
         num_workers=config_wrapper.config["num_workers"],
